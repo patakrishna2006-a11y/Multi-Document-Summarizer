@@ -1,0 +1,30 @@
+# Environment variable
+.env
+
+# files
+*.pdf
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables and API keys
+.env
+.env.*
+
+# Vector databases
+vector_Chroma.db/
+chroma_db/
+chroma.sqlite3
+*.faiss
+*.pkl
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
