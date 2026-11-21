@@ -1,3 +1,4 @@
+import os 
 from langchain_community.document_loaders import PyPDFLoader
 
 def load_document(file_paths):
@@ -7,6 +8,16 @@ def load_document(file_paths):
     for file_path in file_paths:
 
         try:
+             # Check whether the file exists
+            if not os.path.exists(file_path):
+                print(f"File not found: {file_path}")
+                continue
+
+            # Check PDF extension
+            if not file_path.lower().endswith(".pdf"):
+                print(f"Invalid file format: {file_path}")
+                continue
+            
             loader = PyPDFLoader(file_path)
 
             pages = loader.load()
