@@ -4,6 +4,7 @@ langchain
 langchain_community
 langchain_ollama
 chromadb
+langchain_chroma
 pypdf
 
 # UI

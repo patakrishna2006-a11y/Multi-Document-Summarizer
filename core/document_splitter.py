@@ -3,7 +3,7 @@ from document_loader import load_document
 
 file_paths = [
     r"C:\Users\patak\OneDrive\Documents\GitHub\Multi doc summarizer\LangChain Notes.pdf",
-    r"C:\Users\patak\OneDrive\Documents\GitHub\Multi doc summarizer\langchain.pdf"
+    r"C:\Users\patak\OneDrive\Documents\GitHub\Multi doc summarizer\Module-4_Inheritance_and_Interfaces_JAVA.pdf"
 ]
 
 docs = load_document(file_paths)
