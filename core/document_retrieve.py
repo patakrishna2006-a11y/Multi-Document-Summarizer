@@ -1,42 +1,39 @@
+from typing import List
+from langchain_core.documents import Document
+from langchain_core.retrievers import BaseRetriever
+from document_vector_store import get_vector_store
 
-from langchain_chroma import Chroma
-from document_embedding import embedding
-import os
 
-# Database configuration
-PERSIST_DIRECTORY = os.getenv(
-    "CHROMA_PERSIST_DIRECTORY",
-    "rag_chroma.db"
-)
-COLLECTION_NAME = "sample"
+def get_retriever() -> BaseRetriever:
+    """Get a fresh retriever from the current vector store."""
+    vector_store = get_vector_store()
+    return vector_store.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 5}
+    )
 
-# Connect to existing vector database
-vector_store = Chroma(
-    embedding_function=embedding,
-    persist_directory=PERSIST_DIRECTORY,
-    collection_name=COLLECTION_NAME
-)
 
-# Create retriever
-retriever = vector_store.as_retriever(
-    search_type="similarity",
-    search_kwargs={"k": 5}
-)
+def retrieve_documents(query: str) -> List[Document]:
+    """
+    Retrieve relevant documents for a query.
+    
+    Args:
+        query: Search query string
+        
+    Returns:
+        List of retrieved Document objects
+    """
+    if not query.strip():
+        raise ValueError("Query cannot be empty.")
 
-# User query
-query = "What is LangChain?"
+    try:
+        retriever = get_retriever()
+        results = retriever.invoke(query)
 
-# Validate and retrieve documents
-if not query.strip():
-    raise ValueError("Query cannot be empty.")
+        if not results:
+            print("No relevant documents found.")
+            return []
 
-try:
-    results = retriever.invoke(query)
-
-    if not results:
-        print("No relevant documents found.")
-
-    else:
         print("\n========== RETRIEVED DOCUMENTS ==========")
 
         for i, doc in enumerate(results, start=1):
@@ -46,7 +43,7 @@ try:
 
         print("\nTotal Retrieved:", len(results))
 
-except Exception as e:
-    print(f"Retrieval failed: {e}")
+        return results
 
-print("\n========== RETRIEVAL COMPLETED ==========")
+    except Exception as e:
+        raise RuntimeError(f"Retrieval failed: {e}") from e
