@@ -6,8 +6,11 @@ Loads PDFs, creates vector store, and enables interactive Q&A.
 Usage:
     python main.py                    # Interactive mode (prompts for file paths)
     python main.py file1.pdf file2.pdf  # Use provided PDF files
+    python main.py --help             # Show help
+    python main.py --rebuild          # Rebuild vector store with same files
 """
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -23,8 +26,21 @@ from core.answer_generate import rag_chain
 from langchain_chroma import Chroma
 
 
-def setup_vector_store(file_paths):
+# Default configuration
+DEFAULT_CONFIG = {
+    "chunk_size": 800,
+    "chunk_overlap": 100,
+    "retrieval_k": 5,
+    "persist_directory": PERSIST_DIRECTORY,
+    "collection_name": COLLECTION_NAME,
+}
+
+
+def setup_vector_store(file_paths, config=None):
     """Load, split, and store documents in vector database."""
+    if config is None:
+        config = DEFAULT_CONFIG
+    
     print("\n" + "="*60)
     print("SETTING UP VECTOR STORE")
     print("="*60)
@@ -42,8 +58,8 @@ def setup_vector_store(file_paths):
     # Split documents
     print("\nSplitting documents into chunks...")
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=100,
+        chunk_size=config["chunk_size"],
+        chunk_overlap=config["chunk_overlap"],
         separators=["\n\n", "\n", " ", ""]
     )
     chunks = splitter.split_documents(documents)
@@ -54,16 +70,16 @@ def setup_vector_store(file_paths):
     try:
         vector_store = Chroma(
             embedding_function=embedding,
-            persist_directory=PERSIST_DIRECTORY,
-            collection_name=COLLECTION_NAME
+            persist_directory=config["persist_directory"],
+            collection_name=config["collection_name"]
         )
         
         # Clear existing collection
         vector_store.delete_collection()
         vector_store = Chroma(
             embedding_function=embedding,
-            persist_directory=PERSIST_DIRECTORY,
-            collection_name=COLLECTION_NAME
+            persist_directory=config["persist_directory"],
+            collection_name=config["collection_name"]
         )
         
         # Add new documents
@@ -73,14 +89,20 @@ def setup_vector_store(file_paths):
         )
         
         print(f"Vector store created successfully!")
-        print(f"Persisted to: {PERSIST_DIRECTORY}")
-        print(f"Collection: {COLLECTION_NAME}")
+        print(f"Persisted to: {config['persist_directory']}")
+        print(f"Collection: {config['collection_name']}")
         print(f"Total chunks indexed: {len(chunks)}")
         return True
         
     except Exception as e:
         print(f"Error creating vector store: {e}")
         return False
+
+
+def rebuild_vector_store(file_paths, config=None):
+    """Rebuild vector store with existing files (same as setup but explicit)."""
+    print("\n[...] Rebuilding vector store...")
+    return setup_vector_store(file_paths, config)
 
 
 def interactive_qa():
@@ -117,10 +139,10 @@ def interactive_qa():
             print(f"\nError: {e}")
 
 
-def get_file_paths_from_args():
+def get_file_paths_from_args(args):
     """Get file paths from command line arguments."""
     file_paths = []
-    for arg in sys.argv[1:]:
+    for arg in args:
         path = arg.strip().strip('"')
         if os.path.exists(path) and path.lower().endswith('.pdf'):
             file_paths.append(path)
@@ -153,15 +175,96 @@ def get_file_paths_interactive():
     return file_paths
 
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Multi-Document QA System with RAG Pipeline",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py                                    # Interactive file selection
+  python main.py doc1.pdf doc2.pdf                 # Use specific files
+  python main.py --rebuild doc1.pdf doc2.pdf       # Rebuild vector store
+  python main.py --chunk-size 1000 --overlap 200   # Custom chunk settings
+        """
+    )
+    
+    parser.add_argument(
+        "files",
+        nargs="*",
+        help="PDF file paths to process"
+    )
+    
+    parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="Rebuild vector store (clears existing data)"
+    )
+    
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=DEFAULT_CONFIG["chunk_size"],
+        help=f"Chunk size for text splitting (default: {DEFAULT_CONFIG['chunk_size']})"
+    )
+    
+    parser.add_argument(
+        "--overlap",
+        type=int,
+        default=DEFAULT_CONFIG["chunk_overlap"],
+        help=f"Chunk overlap for text splitting (default: {DEFAULT_CONFIG['chunk_overlap']})"
+    )
+    
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=DEFAULT_CONFIG["retrieval_k"],
+        help=f"Number of chunks to retrieve (default: {DEFAULT_CONFIG['retrieval_k']})"
+    )
+    
+    parser.add_argument(
+        "--persist-dir",
+        type=str,
+        default=DEFAULT_CONFIG["persist_directory"],
+        help=f"Vector store persist directory (default: {DEFAULT_CONFIG['persist_directory']})"
+    )
+    
+    parser.add_argument(
+        "--collection",
+        type=str,
+        default=DEFAULT_CONFIG["collection_name"],
+        help=f"ChromaDB collection name (default: {DEFAULT_CONFIG['collection_name']})"
+    )
+    
+    parser.add_argument(
+        "--no-qa",
+        action="store_true",
+        help="Only build vector store, skip interactive Q&A"
+    )
+    
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    
     print("="*60)
     print("MULTI-DOCUMENT QUESTION ANSWERING SYSTEM")
     print("="*60)
     
-    # Get file paths from command line args or interactive input
-    if len(sys.argv) > 1:
+    # Build config from args
+    config = {
+        "chunk_size": args.chunk_size,
+        "chunk_overlap": args.overlap,
+        "retrieval_k": args.k,
+        "persist_directory": args.persist_dir,
+        "collection_name": args.collection,
+    }
+    
+    # Get file paths
+    if args.files:
         print("\nUsing file paths from command line arguments:")
-        file_paths = get_file_paths_from_args()
+        file_paths = get_file_paths_from_args(args.files)
     else:
         file_paths = get_file_paths_interactive()
     
@@ -169,13 +272,18 @@ def main():
         print("\nNo valid PDF files provided. Exiting.")
         return
     
-    # Setup vector store
-    success = setup_vector_store(file_paths)
+    # Setup or rebuild vector store
+    if args.rebuild:
+        success = rebuild_vector_store(file_paths, config)
+    else:
+        success = setup_vector_store(file_paths, config)
+    
     if not success:
         return
     
-    # Start interactive Q&A
-    interactive_qa()
+    # Start interactive Q&A (unless --no-qa)
+    if not args.no_qa:
+        interactive_qa()
 
 
 if __name__ == "__main__":

@@ -51,7 +51,7 @@ Your task is to answer the user's questions using the retrieved context from the
 """
 )
 
-def rag_chain(question):
+def rag_chain(question: str) -> str:
     retriever = get_retriever()
     documents = retriever.invoke(question)
 
