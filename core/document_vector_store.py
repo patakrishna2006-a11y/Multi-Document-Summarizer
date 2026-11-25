@@ -1,8 +1,8 @@
-
 import os
-from langchain_classic.vectorstores import Chroma
+from typing import List
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
 from document_embedding import embedding
-from document_splitter import chunks
 
 
 PERSIST_DIRECTORY = os.getenv(
@@ -13,12 +13,18 @@ PERSIST_DIRECTORY = os.getenv(
 COLLECTION_NAME = "sample"
 
 
-def create_vector_store():
-
+def create_vector_store(chunks: List[Document]) -> Chroma:
+    """
+    Create and populate vector store with document chunks.
+    
+    Args:
+        chunks: List of LangChain Document objects
+        
+    Returns:
+        Chroma vector store instance
+    """
     if not chunks:
-        raise ValueError(
-            "No document chunks available for indexing."
-        )
+        raise ValueError("No document chunks available for indexing.")
 
     try:
         vector_store = Chroma(
@@ -29,10 +35,7 @@ def create_vector_store():
 
         vector_store.add_documents(
             documents=chunks,
-            ids=[
-                f"document_chunk_{i}"
-                for i in range(len(chunks))
-            ]
+            ids=[f"document_chunk_{i}" for i in range(len(chunks))]
         )
 
         print(
@@ -43,9 +46,13 @@ def create_vector_store():
         return vector_store
 
     except Exception as e:
-        raise RuntimeError(
-            f"Vector store creation failed: {e}"
-        ) from e
+        raise RuntimeError(f"Vector store creation failed: {e}") from e
 
 
-vector_store = create_vector_store()
+def get_vector_store() -> Chroma:
+    """Get existing vector store (for retrieval)."""
+    return Chroma(
+        embedding_function=embedding,
+        persist_directory=PERSIST_DIRECTORY,
+        collection_name=COLLECTION_NAME
+    )

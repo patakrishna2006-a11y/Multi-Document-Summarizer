@@ -1,23 +1,30 @@
-from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
-from document_loader import load_document
+from typing import List
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-file_paths = [
-    r"C:\Users\patak\OneDrive\Documents\GitHub\Multi doc summarizer\LangChain Notes.pdf",
-    r"C:\Users\patak\OneDrive\Documents\GitHub\Multi doc summarizer\Module-4_Inheritance_and_Interfaces_JAVA.pdf"
-]
+# Re-export for convenience
+__all__ = ["RecursiveCharacterTextSplitter", "split_documents"]
 
-docs = load_document(file_paths)
 
-print(f"\nTotal pages loaded: {len(docs)}")
-
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size = 800,
-    chunk_overlap = 100,
-    separators=[
-        "\n\n", "\n", " ", ""
-    ]
-)
-
-chunks = splitter.split_documents(docs)
-print(f"Total document:{len(docs)}")
-print(f"Total chunks:{len(chunks)}")
+def split_documents(
+    documents: List[Document],
+    chunk_size: int = 800,
+    chunk_overlap: int = 100
+) -> List[Document]:
+    """
+    Split documents into chunks.
+    
+    Args:
+        documents: List of LangChain Document objects
+        chunk_size: Size of each chunk (default: 800)
+        chunk_overlap: Overlap between chunks (default: 100)
+        
+    Returns:
+        List of chunked Document objects
+    """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", " ", ""]
+    )
+    return splitter.split_documents(documents)
